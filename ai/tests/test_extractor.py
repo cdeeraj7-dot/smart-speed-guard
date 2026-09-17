@@ -1,5 +1,6 @@
 import math
 
+from ai.features import extractor
 from ai.features.extractor import extract_features
 
 
@@ -159,3 +160,52 @@ def test_gps_valid_percentage_and_mean():
 		features["gps_valid_percentage"],
 		2 / 3,
 	)
+
+
+def test_available_sensor_features():
+	window = [
+		make_record(
+			0,
+			accel_x=1.0,
+			accel_y=0.0,
+			accel_z=0.0,
+			sensor_valid=True,
+		),
+		make_record(
+			1000,
+			accel_x=0.0,
+			accel_y=1.0,
+			accel_z=0.0,
+			sensor_valid=True,
+		),
+	]
+
+	features = extractor.extract_available_sensor_features(window)
+
+	assert "accel_magnitude_mean" in features
+	assert "accel_magnitude_max" in features
+	assert "accel_magnitude_std" in features
+	assert "sensor_valid_percentage" in features
+
+	assert features["accel_magnitude_mean"] == 1.0
+	assert features["accel_magnitude_max"] == 1.0
+	assert features["sensor_valid_percentage"] == 1.0
+
+
+def test_available_sensor_features_do_not_fabricate_unavailable_sensors():
+	window = [
+		make_record(
+			0,
+			accel_x=1.0,
+			accel_y=0.0,
+			accel_z=0.0,
+			sensor_valid=True,
+		),
+	]
+
+	features = extractor.extract_available_sensor_features(window)
+
+	assert "speed_hall_mean" not in features
+	assert "speed_gps_mean" not in features
+	assert "gyro_magnitude_mean" not in features
+	assert "obstacle_distance_mean" not in features

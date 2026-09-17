@@ -123,3 +123,42 @@ def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 	}
 
 	return features
+def extract_available_sensor_features(
+	window: list[dict[str, Any]],
+) -> dict[str, float]:
+	"""
+	Extract features only from sensor modalities that are currently
+	available in the telemetry window.
+
+	Unavailable sensor modalities are omitted rather than represented
+	as fabricated zero-valued measurements.
+	"""
+
+	if not window:
+		raise ValueError("Cannot extract features from an empty window")
+
+	acceleration_magnitudes = [
+		_acceleration_magnitude(record)
+		for record in window
+	]
+
+	sensor_valid_count = sum(
+		1
+		for record in window
+		if record["sensor_valid"]
+	)
+
+	return {
+		"accel_magnitude_mean": _mean(
+			acceleration_magnitudes
+		),
+		"accel_magnitude_max": max(
+			acceleration_magnitudes
+		),
+		"accel_magnitude_std": _std(
+			acceleration_magnitudes
+		),
+		"sensor_valid_percentage": (
+			sensor_valid_count / len(window)
+		),
+	}
