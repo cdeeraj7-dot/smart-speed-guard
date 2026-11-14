@@ -6,19 +6,20 @@ Audit basis:
 
 - `AGENTS.md` is present at the repository root and is the authoritative project instruction file.
 - `README.md` is present and contains only the project title and a short description.
-- No application source code is present.
-- No MCU firmware is present.
-- No Linux service is present.
-- No AI/ML pipeline or model is present.
-- No backend, database, dashboard, or cloud integration is present.
-- No LTE integration is present.
-- No simulation files are present.
-- No test suite, test fixtures, build configuration, dependency manifest, environment template, or CI configuration is present.
-- No hardware pin map, wiring diagram, protocol specification, sensor calibration record, or measured validation result is present.
+- MCU source exists under `firmware/mcu/`, including IMU acquisition, telemetry initialization, safety evaluation, and the MCU entry point.
+- A Linux Bridge receiver exists at `firmware/linux/receiver.py`; its companion README describes the expanded telemetry flow as intended and says end-to-end operation is `NOT YET MEASURED`.
+- Python AI/preprocessing, risk, vision, data, and test modules exist under `ai/`. No trained model or verified on-device inference result was established by this audit.
+- A Streamlit monitoring application exists at `dashboard/app.py`. Its runtime and integration with live telemetry were not verified.
+- `ai/requirements.txt` declares Python dependencies. `firmware/mcu/README.md`
+  documents the Arduino CLI build command for `arduino:zephyr:unoq`; compilation
+  succeeded with the locally installed toolchain on 2026-11-14.
+- `backend/`, `simulation/`, and the top-level `tests/` contain no implementation files in the inspected tree; no backend, database, cloud endpoint, or LTE modem integration was identified.
+- Python tests exist under `ai/tests/`. The offline suite ran on 2026-11-14: 111 passed. Python syntax compilation for `ai`, `firmware`, and `tests` also passed.
+- No verified hardware pin map, wiring diagram, sensor calibration record, or physical validation result was established. The protocol folder contains a Bridge bring-up reference; the expanded telemetry payload has not been physically verified.
 
-Current state: repository setup only. Stage 0 architecture audit is not an implementation baseline. There is no executable system to build or validate, and no performance result is available. Any unmeasured metric must remain `NOT YET MEASURED`.
+Current state: an early, partial software implementation exists; this is not repository-setup-only. Software test results do not establish MCU compilation, physical Bridge communication, sensor accuracy, or hardware safety. All unmeasured metrics remain `NOT YET MEASURED`.
 
-The proposed repository structure in `AGENTS.md` is suitable as a staged target. It should be created incrementally as each development stage begins rather than as empty placeholder directories.
+The repository structure is partly populated. Do not treat the presence of directories or source files as proof that the corresponding development stage is complete.
 
 ## 2. Current Architecture
 
@@ -96,7 +97,14 @@ Required MCU design decisions:
 - `TODO: VERIFY` behavior for stale, missing, out-of-range, or contradictory sensor data.
 - `TODO: VERIFY` alert-level definitions, transition hysteresis, latching, acknowledgement, and reset behavior.
 
-No MCU implementation currently exists.
+Partial MCU source exists in `firmware/mcu/` (`include/imu.h`, `include/safety.h`,
+`include/telemetry.h`, and corresponding source files). The current implementation
+reads MPU6050 accelerometer registers and marks gyro data invalid; other sensor
+acquisition and hardware behavior are not established. The MCU sketch compiled
+with the documented UNO Q target, but it has not been flashed or physically
+tested.
+The current worktree also contains an uncommitted `Wire2`-to-`Wire` I2C change in
+`imu.cpp`; its board-specific correctness is unverified.
 
 ## 5. Linux Responsibilities
 
@@ -121,7 +129,9 @@ Required Linux decisions:
 - `TODO: VERIFY` process boundaries, restart policy, local queueing, and log rotation.
 - `TODO: VERIFY` whether dashboard access is local, remote, cloud-mediated, or all three.
 
-No Linux implementation currently exists.
+Partial Linux-side code exists in `firmware/linux/receiver.py` for receiving
+telemetry and writing CSV, plus a README. Deployment behavior, service recovery,
+and physical operation of the expanded payload are not verified.
 
 ## 6. Sensor Data Flow
 
@@ -143,7 +153,7 @@ Acquisition and processing requirements:
 - Ultrasonic: non-blocking trigger/measurement scheduling, timeout handling, invalid echo handling, electrical protection, plausibility bounds, filtering, and stale-data policy.
 - IMU: bus error handling, calibration, axis/orientation definition, bias management, sampling, filtering, saturation/invalid data detection, and event-window buffering.
 
-`TODO: VERIFY` all sampling frequencies, filter types and parameters, calibration procedures, timestamps, units, coordinate frames, maximum tolerable age, and data-quality flags. No sensor data path is implemented.
+`TODO: VERIFY` all sampling frequencies, filter types and parameters, calibration procedures, timestamps, units, coordinate frames, maximum tolerable age, and data-quality flags. The MCU source currently reads only accelerometer registers from the MPU6050. The telemetry structure and sender include fields for additional sensors, but their acquisition is not established; transmitted defaults must not be interpreted as measured readings. The documented expanded MCU/Linux flow is `NOT YET MEASURED`.
 
 ## 7. Safety Architecture
 
@@ -192,7 +202,11 @@ Before model development:
 
 `TODO: VERIFY` the initial AI use case, labels, dataset source and consent/provenance, feature set, model family, runtime, model-update policy, resource budget, inference deadline, and fallback behavior. Accuracy and successful inference are `NOT YET MEASURED`.
 
-No AI code or model is present.
+AI and preprocessing source, tests, and data files exist under `ai/`, including
+feature extraction, validation, windowing, risk profiling, and vision-related
+modules. The existence of these modules does not establish a trained model,
+UNO Q deployment, or successful on-device inference. Model and inference
+performance remain `NOT YET MEASURED`.
 
 ## 9. Cloud and Backend Architecture
 
@@ -214,7 +228,7 @@ Required backend decisions:
 - `TODO: VERIFY` ordering, deduplication, replay protection, idempotency, rate limits, and payload-size limits.
 - `TODO: VERIFY` whether location and telemetry require privacy controls, consent, access logging, redaction, or retention limits.
 
-Credentials and private material must be supplied through protected configuration/environment mechanisms and never hard-coded or committed. No cloud, backend, database, or endpoint currently exists.
+Credentials and private material must be supplied through protected configuration/environment mechanisms and never hard-coded or committed. No cloud/backend/database implementation or endpoint was identified in the inspected tree.
 
 ## 10. LTE Emergency Architecture
 
@@ -294,7 +308,12 @@ Planned test layers:
 - Hardware and integration tests for actual wiring, signal levels, power behavior, sensor calibration, alert outputs, and full data flow.
 - Field tests only after safe bench validation and with documented procedures and risk controls.
 
-`TODO: VERIFY` test equipment, fixtures, simulators, hardware availability, test data, acceptance criteria, fault-injection approach, logging format, and approval process. No tests or results currently exist.
+Python tests exist under `ai/tests/`; 111 passed on 2026-11-14. Python
+`compileall` for `ai`, `firmware`, and `tests` passed on the same date. These
+results do not verify MCU compilation, Bridge hardware communication, sensors,
+bench behavior, or field behavior. `TODO: VERIFY` test equipment, fixtures,
+hardware availability, test data, hardware acceptance criteria, fault-injection
+approach, logging format, and approval process.
 
 ## 14. Dependencies
 
@@ -318,7 +337,11 @@ Software dependencies not yet selected:
 - LTE driver/library or verified modem integration layer.
 - Test, simulation, static-analysis, and CI tools.
 
-`TODO: VERIFY` every dependency version, license/academic-use suitability, maintenance status, platform compatibility, resource cost, and reproducible installation method before adoption. No dependencies are installed or declared.
+`ai/requirements.txt` declares Python package versions and
+`firmware/mcu/README.md` records the tested MCU build command and installed
+toolchain versions. `TODO: VERIFY` every dependency's license/academic-use
+suitability, maintenance status, platform compatibility, resource cost, and
+reproducible installation method before adoption.
 
 ## 15. Unverified Technical Decisions
 
@@ -401,15 +424,25 @@ Major risks identified:
 - **AI authority creep:** AI could incorrectly influence safety behavior. Mitigation: enforce MCU deterministic authority and treat AI failure as non-safety-critical.
 - **Cloud/network dependency:** Connectivity loss could cause data loss or incorrectly imply loss of safety. Mitigation: local safety, health state, bounded buffering, and later upload.
 - **Privacy and security exposure:** GPS and emergency data are sensitive. Mitigation: define threat model, access control, secret management, retention, and consent before deployment.
-- **Insufficient validation resources:** No tests, hardware fixtures, measurements, or acceptance criteria currently exist. Mitigation: plan unit, simulation, bench, hardware, and field validation separately.
+- **Insufficient hardware validation:** Python tests exist, but no verified hardware fixtures, physical measurements, or hardware acceptance results are recorded. Mitigation: plan unit, simulation, bench, hardware, and field validation separately.
 - **Scope expansion before foundation:** Implementing AI, cloud, dashboard, or LTE before hardware and safety contracts are verified would create rework and unsupported claims. Mitigation: follow the staged order and audit gates.
 
 ## 19. Final Audit Verdict
 
-The repository is correctly at the beginning of Stage 0. The declared Phase-2 architecture is conceptually consistent: the STM32U585 MCU owns deterministic local safety, while the Qualcomm QRB2210 Linux side owns higher-level, AI, logging, cloud, and dashboard functions. The non-control monitoring boundary and AI non-authority rule are appropriate and must be preserved.
+The repository contains partial MCU, Linux receiver, AI/preprocessing, dashboard,
+and Python test implementations. The intended architecture remains that the
+STM32U585 owns deterministic local safety while the Qualcomm QRB2210 Linux side
+owns higher-level, AI, logging, cloud, and dashboard functions. The non-control
+monitoring boundary and AI non-authority rule must be preserved.
 
-However, the project is not implementation-ready for hardware or inter-domain software. No code, dependencies, pin map, wiring, protocol, selected LTE modem, calibration data, thresholds, test assets, or measured results exist. The highest-priority work is to resolve the `TODO: VERIFY` decisions concerning the actual UNO Q interfaces, electrical design, sensor ownership and timing, MCU-Linux transport, power behavior, and LTE hardware/policy.
+The project is not ready for hardware or full inter-domain integration. Important
+board, electrical, pin, sensor-ownership, toolchain, protocol, LTE, calibration,
+threshold, and acceptance details remain unresolved. Python tests passing does
+not demonstrate MCU compilation, physical Bridge communication, sensor
+accuracy, field performance, or compliance.
 
-Audit status: **Stage 0 architecture audit complete; implementation readiness: blocked pending verification of the identified technical decisions.**
+Audit status: **Stage 0 repository and architecture inventory reconciliation
+complete. Implementation readiness remains blocked pending verification of
+technical decisions and hardware integration.**
 
 No physical validation, performance result, successful inference, communication capability, or safety compliance claim is made by this document.

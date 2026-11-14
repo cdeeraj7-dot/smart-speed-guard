@@ -16,22 +16,22 @@ constexpr float ACCEL_SCALE = 16384.0f;
 bool imu_initialized = false;
 
 bool writeRegister(uint8_t reg, uint8_t value) {
-	Wire2.beginTransmission(MPU6050_ADDRESS);
-	Wire2.write(reg);
-	Wire2.write(value);
+	Wire.beginTransmission(MPU6050_ADDRESS);
+	Wire.write(reg);
+	Wire.write(value);
 
-	return Wire2.endTransmission() == 0;
+	return Wire.endTransmission() == 0;
 }
 
 bool readRegisters(uint8_t start_register, uint8_t* buffer, uint8_t length) {
-	Wire2.beginTransmission(MPU6050_ADDRESS);
-	Wire2.write(start_register);
+	Wire.beginTransmission(MPU6050_ADDRESS);
+	Wire.write(start_register);
 
-	if (Wire2.endTransmission(false) != 0) {
+	if (Wire.endTransmission(false) != 0) {
 		return false;
 	}
 
-	uint8_t received = Wire2.requestFrom(
+	uint8_t received = Wire.requestFrom(
 		MPU6050_ADDRESS,
 		length
 	);
@@ -41,11 +41,11 @@ bool readRegisters(uint8_t start_register, uint8_t* buffer, uint8_t length) {
 	}
 
 	for (uint8_t i = 0; i < length; ++i) {
-		if (!Wire2.available()) {
+		if (!Wire.available()) {
 			return false;
 		}
 
-		buffer[i] = Wire2.read();
+		buffer[i] = Wire.read();
 	}
 
 	return true;
@@ -61,7 +61,7 @@ int16_t combineBytes(uint8_t high_byte, uint8_t low_byte) {
 }  // namespace
 
 bool initializeIMU() {
-	Wire2.begin();
+	Wire.begin();
 
 	// Wake up the MPU6050.
 	if (!writeRegister(REG_PWR_MGMT_1, 0x00)) {

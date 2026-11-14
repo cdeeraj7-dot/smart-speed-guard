@@ -21,6 +21,7 @@ struct TelemetryData {
 	float gyro_x;
 	float gyro_y;
 	float gyro_z;
+	bool gyro_valid;
 
 	float obstacle_distance;
 

@@ -18,6 +18,7 @@ void initializeTelemetry(TelemetryData& telemetry) {
 	telemetry.gyro_x = 0.0f;
 	telemetry.gyro_y = 0.0f;
 	telemetry.gyro_z = 0.0f;
+	telemetry.gyro_valid = false;
 
 	telemetry.obstacle_distance = 0.0f;
 

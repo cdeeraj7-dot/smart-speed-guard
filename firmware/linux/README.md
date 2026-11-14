@@ -1,15 +1,11 @@
 ## Current Status
 
-The current implementation is a verified bring-up test.
-
-It receives real accelerometer X, Y, and Z values from the STM32U585 MCU
-through the Arduino Bridge and processes them in the QRB2210 Linux
-environment.
-
-The receiver also logs the received telemetry to a CSV file on the UNO Q
+The initial accelerometer-only Bridge bring-up was verified. The current MCU
+sketch sends an expanded telemetry message through the Arduino Bridge, and the
+Linux receiver is configured to log its fields to a CSV file on the UNO Q
 Linux filesystem.
 
-Current verified flow:
+Current intended flow:
 
 MPU6050
 ↓
@@ -23,6 +19,7 @@ Python telemetry receiver
 ↓
 CSV logging
 
-The current telemetry message is intentionally limited to accelerometer data.
-It will be extended to the project's structured telemetry format as additional
-sensors are integrated.
+Only the accelerometer values are currently acquired by the MCU implementation.
+Hall speed, GPS, obstacle distance, and gyro values are transmitted as present
+in the telemetry structure; their sensor acquisition is not yet implemented.
+End-to-end operation of the expanded message is NOT YET MEASURED.

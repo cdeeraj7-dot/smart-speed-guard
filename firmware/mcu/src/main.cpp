@@ -9,6 +9,14 @@ TelemetryData telemetry;
 SafetyStatus safety_status;
 IMUData imu_data;
 
+namespace {
+
+constexpr unsigned long TELEMETRY_INTERVAL_MS = 500UL;
+unsigned long last_telemetry_ms = 0;
+bool telemetry_sent = false;
+
+}  // namespace
+
 void setup() {
     Serial.begin(115200);
 
@@ -17,60 +25,54 @@ void setup() {
     initializeTelemetry(telemetry);
     Bridge.begin();
 
-    safety_status = evaluateSafety(
-        0.0f,
-        0.0f,
-        0.0f
-    );
+    safety_status = evaluateSafety(0.0f, 0.0f, 0.0f);
 
     bool imu_ok = initializeIMU();
 
     Serial.println("================================");
     Serial.println("Smart Speed Guard - MCU");
     Serial.println("STM32U585 firmware started");
-    Serial.println("Telemetry structure initialized");
-    Serial.println("Safety module initialized");
 
-    if (imu_ok) {
-        Serial.println("MPU6050 initialized");
-    } else {
-        Serial.println("MPU6050 initialization FAILED");
-    }
+    Serial.println(
+        imu_ok ? "MPU6050 initialized" :
+                 "MPU6050 initialization FAILED"
+    );
 
     Serial.println("================================");
 }
 
 void loop() {
+    const unsigned long now = millis();
 
-    telemetry.timestamp = millis();
+    if (telemetry_sent &&
+        now - last_telemetry_ms < TELEMETRY_INTERVAL_MS) {
+        return;
+    }
 
-    // Read MPU6050 accelerometer
+    telemetry_sent = true;
+    last_telemetry_ms = now;
+    telemetry.timestamp = now;
+
     bool imu_read_ok = readIMU(imu_data);
 
-    if (imu_read_ok && imu_data.accel_valid) {
+    telemetry.sensor_valid =
+        imu_read_ok && imu_data.accel_valid;
 
+    if (telemetry.sensor_valid) {
         telemetry.accel_x = imu_data.accel_x;
         telemetry.accel_y = imu_data.accel_y;
         telemetry.accel_z = imu_data.accel_z;
-
-        telemetry.sensor_valid = true;
-
     } else {
-
         telemetry.accel_x = 0.0f;
         telemetry.accel_y = 0.0f;
         telemetry.accel_z = 0.0f;
-
-        telemetry.sensor_valid = false;
     }
 
-    // Gyroscope intentionally unavailable for now.
-    telemetry.gyro_x = 0.0f;
-    telemetry.gyro_y = 0.0f;
-    telemetry.gyro_z = 0.0f;
+    telemetry.gyro_x = imu_data.gyro_x;
+    telemetry.gyro_y = imu_data.gyro_y;
+    telemetry.gyro_z = imu_data.gyro_z;
+    telemetry.gyro_valid = imu_data.gyro_valid;
 
-    // Current safety evaluation.
-    // Speed and obstacle thresholds are not defined yet.
     float acceleration_magnitude = 0.0f;
 
     safety_status = evaluateSafety(
@@ -79,25 +81,41 @@ void loop() {
         acceleration_magnitude
     );
 
-    // Print real accelerometer telemetry.
+    telemetry.deterministic_alert =
+        static_cast<uint8_t>(safety_status.alert);
+
+    digitalWrite(
+        LED_BUILTIN,
+        safety_status.led_active ? LOW : HIGH
+    );
+
     Serial.print("ACCEL X: ");
     Serial.print(telemetry.accel_x, 3);
-
-    Serial.print(" g | Y: ");
+    Serial.print(" | Y: ");
     Serial.print(telemetry.accel_y, 3);
-
-    Serial.print(" g | Z: ");
+    Serial.print(" | Z: ");
     Serial.print(telemetry.accel_z, 3);
-
-    Serial.print(" g | VALID: ");
+    Serial.print(" | VALID: ");
     Serial.println(telemetry.sensor_valid ? "YES" : "NO");
-    Bridge.call(
-    "telemetry",
-    telemetry.accel_x,
-    telemetry.accel_y,
-    telemetry.accel_z,
-    telemetry.sensor_valid
-);
 
-    delay(500);
+    // Full telemetry transmission.
+    Bridge.call(
+        "telemetry",
+        static_cast<unsigned long>(telemetry.timestamp),
+        telemetry.speed_hall,
+        telemetry.speed_gps,
+        telemetry.latitude,
+        telemetry.longitude,
+        telemetry.gps_valid,
+        telemetry.accel_x,
+        telemetry.accel_y,
+        telemetry.accel_z,
+        telemetry.gyro_x,
+        telemetry.gyro_y,
+        telemetry.gyro_z,
+        telemetry.gyro_valid,
+        telemetry.obstacle_distance,
+        telemetry.deterministic_alert,
+        telemetry.sensor_valid
+    );
 }
