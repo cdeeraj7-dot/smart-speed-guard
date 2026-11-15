@@ -7,7 +7,10 @@ Audit basis:
 - `AGENTS.md` is present at the repository root and is the authoritative project instruction file.
 - `README.md` is present and contains only the project title and a short description.
 - MCU source exists under `firmware/mcu/`, including IMU acquisition, telemetry initialization, safety evaluation, and the MCU entry point.
-- A Linux Bridge receiver exists at `firmware/linux/receiver.py`; its companion README describes the expanded telemetry flow as intended and says end-to-end operation is `NOT YET MEASURED`.
+- A Linux Bridge receiver exists at `firmware/linux/receiver.py`. Two
+  safe-bench observations verified its current 16-field callback and CSV
+  logging, including a recheck after receiver restart; broader end-to-end
+  integration and failure handling remain unverified.
 - Python AI/preprocessing, risk, vision, data, and test modules exist under `ai/`. No trained model or verified on-device inference result was established by this audit.
 - A Streamlit monitoring application exists at `dashboard/app.py`. Its runtime and integration with live telemetry were not verified.
 - `ai/requirements.txt` declares Python dependencies. `firmware/mcu/README.md`
@@ -15,9 +18,16 @@ Audit basis:
   succeeded with the locally installed toolchain on 2026-11-14.
 - `backend/`, `simulation/`, and the top-level `tests/` contain no implementation files in the inspected tree; no backend, database, cloud endpoint, or LTE modem integration was identified.
 - Python tests exist under `ai/tests/`. The offline suite ran on 2026-11-14: 111 passed. Python syntax compilation for `ai`, `firmware`, and `tests` also passed.
-- No verified hardware pin map, wiring diagram, sensor calibration record, or physical validation result was established. The protocol folder contains a Bridge bring-up reference; the expanded telemetry payload has not been physically verified.
+- No verified hardware pin map, wiring diagram, or sensor calibration record
+  was established. Physical callback/CSV runs were observed, but they do not
+  establish sensor accuracy, Linux-failure independence, or system-level
+  safety. The protocol folder contains a separate Bridge bring-up reference.
 
-Current state: an early, partial software implementation exists; this is not repository-setup-only. Software test results do not establish MCU compilation, physical Bridge communication, sensor accuracy, or hardware safety. All unmeasured metrics remain `NOT YET MEASURED`.
+Current state: an early, partial software implementation exists; this is not
+repository-setup-only. The MCU compiles and expanded Bridge callbacks were
+observed in two runs on the target, but software tests and these bench
+observations do not establish sensor accuracy, Linux-failure independence, or
+hardware safety. All unmeasured metrics remain `NOT YET MEASURED`.
 
 The repository structure is partly populated. Do not treat the presence of directories or source files as proof that the corresponding development stage is complete.
 

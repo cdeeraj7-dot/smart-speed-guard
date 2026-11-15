@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <math.h>
 
 #include "telemetry.h"
 #include "safety.h"
@@ -73,7 +74,11 @@ void loop() {
     telemetry.gyro_z = imu_data.gyro_z;
     telemetry.gyro_valid = imu_data.gyro_valid;
 
-    float acceleration_magnitude = 0.0f;
+    const float acceleration_magnitude = sqrtf(
+        telemetry.accel_x * telemetry.accel_x +
+        telemetry.accel_y * telemetry.accel_y +
+        telemetry.accel_z * telemetry.accel_z
+    );
 
     safety_status = evaluateSafety(
         telemetry.speed_hall,

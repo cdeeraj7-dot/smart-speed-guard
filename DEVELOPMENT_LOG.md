@@ -214,3 +214,105 @@ reviewing the associated diffs.
   - `git diff --check` — **passed**.
 - No commit or push was made.
 - Preserve all uncommitted changes. No commit or push was made.
+
+## 2026-11-15 — UNO Q safe-bench timing and receiver reconciliation
+
+- The UNO Q was detected over network and USB (`COM5`). The user confirmed
+  safe-bench conditions and authorized a temporary timing build and restore.
+- Added `MCU_TIMING_PROFILE` instrumentation temporarily to `main.cpp`, then
+  compiled and uploaded it. The network upload required a password and was not
+  used; no credentials were requested or handled. The first USB upload
+  attempt failed in the OpenOCD flash algorithm; a retry succeeded.
+- The profile used `micros()` and captured `setup()` duration, `Bridge.begin()`,
+  `initializeIMU()`, `readIMU()`, the existing telemetry serial output,
+  `Bridge.call()`, and full cycle duration. Over 13 completed 60-cycle
+  windows (780 cycles), observed maxima were:
+  - `readIMU()`: 260 us.
+  - Existing serial telemetry output: 2,217 us.
+  - `Bridge.call()`: 84,350 us.
+  - Full telemetry cycle through `Bridge.call()` return: 86,629 us.
+  - One `setup()` run: 123,874 us; `Bridge.begin()`: 3 us;
+    `initializeIMU()`: 100,240 us.
+- These values include unmeasured instrumentation overhead where applicable
+  and are observed maxima, not guaranteed bounds. The profile did not measure
+  reset-to-setup-entry time. The IMU reported valid samples, but no calibration
+  or sensor-accuracy claim is made.
+- Arduino App Lab 0.12.0 inspection showed its `Telemetry Receiver Test` app
+  was stopped and defined a four-argument callback, not the current 16-field
+  payload. It was briefly started during inspection and then stopped; no
+  matching callback receipt was confirmed. The separate `Smart Speed Guard
+  MCU` app had a `Hello world!` Python entry point and stale `Wire2` IMU code.
+- Therefore, this run does not verify end-to-end telemetry, Linux/Bridge
+  failure independence, or the Linux-unavailable workload. Controlled I²C
+  failures and reset timing also remain outstanding.
+- Removed all temporary profiler changes, recompiled the normal repository
+  firmware (96,396 bytes program storage; 40,984 bytes globals), and uploaded
+  it over USB `COM5`. Serial output confirmed `MPU6050 initialized` and
+  subsequent samples marked valid.
+- No watchdog was configured or enabled. No Python source changed, so the
+  latest Python validation remains 111 passed and compileall passed on
+  2026-11-14. No commit or push was made.
+- The user approved replacing `Telemetry Receiver Test/main.py` with
+  `firmware/linux/receiver.py` and running it. App Lab's editor rejected the
+  replacement with a native selection-range mismatch, including after a
+  keyboard-selection retry. The project remains unchanged and stopped; the
+  incompatible four-field app was not run, and no telemetry CSV or callback
+  evidence was produced. Do not bypass the editor with Ctrl+A/Delete,
+  `setValue`, clipboard, or shell operations; use a supported UI route and
+  confirm before retrying.
+
+## 2026-11-15 — Receiver callback and receiver-app-stopped bench check
+
+- The user manually pasted `firmware/linux/receiver.py` into Arduino App Lab
+  0.12.0, `Telemetry Receiver Test` → `python/main.py`, after the prior editor
+  replacement attempt failed. No source was changed through the editor by the
+  assistant.
+- App Lab ran the receiver. Its log showed repeated `Telemetry logged`
+  callbacks with the current MCU payload, including increasing MCU timestamps.
+  The `telemetry.csv` file appeared in the project file tree. The viewed file
+  snapshot had the expected 16-column header and 35 data rows; every row had
+  16 fields.
+- The normal repository MCU firmware compiled and uploaded on USB `COM5`.
+  The first upload attempt timed out in the OpenOCD flash algorithm; the retry
+  completed successfully. Compiler usage was 96,396 bytes of program storage
+  and 40,984 bytes of global variables.
+- To observe operation without the Python receiver, App Lab Stop was used.
+  The App Lab log showed that this also stopped the microcontroller, so this
+  was not a Linux-only failure injector. The repository firmware was uploaded
+  again over `COM5` with the Python app still stopped.
+- A host serial read at 115200 baud discarded buffered input and captured 11
+  `ACCEL` lines in 5.07 s. Observed host arrival times were about 0.059 s,
+  0.559 s, 1.060 s, 1.560 s, 2.059 s, 2.562 s, 3.060 s, 3.562 s, 4.063 s,
+  4.563 s, and 5.064 s. This shows repeated local sensor/serial cycles while
+  the Python receiver app was absent; it does not prove that the Linux Bridge
+  service was unavailable or provide a direct `Bridge.call()` duration.
+- Reset-to-setup-entry timing and controlled I²C failure behavior remain
+  **NOT YET MEASURED**. The Bridge failure-case duration and worst-case bound
+  also remain **NOT YET MEASURED**. No watchdog was enabled or configured.
+- The App Lab receiver is stopped at this checkpoint; the normal repository
+  MCU firmware was uploaded afterward and the local serial cycles were
+  observed. To resume callback logging, run the App Lab project and then
+  re-upload the repository MCU firmware, since App Lab Run flashes its own
+  sketch.
+- No source code or Python tests changed. `git diff --check` is the only
+  validation run for this documentation update; no commit or push was made.
+
+## 2026-11-15 — Receiver restart and post-upload callback check
+
+- Started the user-pasted `Telemetry Receiver Test` receiver in App Lab and
+  confirmed the app reached `App started`. App Lab Run flashes its own sketch,
+  so the normal repository firmware was recompiled and uploaded over `COM5`.
+- The first flash attempt compiled but timed out in OpenOCD. After the user's
+  approval, one retry completed with exit code 0. The App Lab receiver
+  remained running.
+- Fresh callback logs resumed after the upload. The latest inspected log
+  window contained 45 distinct MCU timestamps from 228,092 to 250,097 ms.
+- Reopened `telemetry.csv`; the visible editor snapshot contained 31 data
+  rows, and its header and each visible row had 16 fields. Visible timestamps
+  ranged from 232,093 to 247,096 ms; this is not a confirmed full-file row
+  count.
+- These observations confirm receiver callbacks and visible CSV rows after
+  restart, not sensor accuracy, Linux/Bridge service failure independence, or
+  complete file persistence. Reset timing, controlled I²C failure, and
+  Linux/Bridge failure-case timing remain NOT YET MEASURED.
+- No source code or Python tests changed. No commit or push was made.

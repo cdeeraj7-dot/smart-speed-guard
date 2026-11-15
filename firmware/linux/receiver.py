@@ -4,26 +4,10 @@ from pathlib import Path
 
 from arduino.app_utils import App, Bridge
 
+from firmware.linux.bridge_contract import CSV_COLUMNS, validate_callback_payload
+
 
 LOG_FILE = Path("telemetry.csv")
-CSV_COLUMNS = (
-    "mcu_timestamp_ms",
-    "speed_hall",
-    "speed_gps",
-    "latitude",
-    "longitude",
-    "gps_valid",
-    "accel_x",
-    "accel_y",
-    "accel_z",
-    "gyro_x",
-    "gyro_y",
-    "gyro_z",
-    "gyro_valid",
-    "obstacle_distance",
-    "deterministic_alert",
-    "sensor_valid",
-)
 
 
 def initialize_log():
@@ -60,6 +44,29 @@ def receive_telemetry(
     deterministic_alert,
     sensor_valid,
 ):
+    errors = validate_callback_payload((
+        mcu_timestamp_ms,
+        speed_hall,
+        speed_gps,
+        latitude,
+        longitude,
+        gps_valid,
+        accel_x,
+        accel_y,
+        accel_z,
+        gyro_x,
+        gyro_y,
+        gyro_z,
+        gyro_valid,
+        obstacle_distance,
+        deterministic_alert,
+        sensor_valid,
+    ))
+
+    if errors:
+        print("Rejected malformed telemetry payload:", "; ".join(errors))
+        return
+
     with LOG_FILE.open("a", newline="") as file:
         writer = csv.writer(file)
 
