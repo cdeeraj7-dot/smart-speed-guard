@@ -27,6 +27,12 @@ current receiver and CSV logging, including a recheck after restarting the
 receiver. Sensor accuracy, unimplemented sensor fields, recovery behavior, and
 Linux/Bridge failure independence remain unverified.
 
+In the 16-field callback, `sensor_valid` means MPU6050 accelerometer validity
+only. `obstacle_distance` is `-1.0` when no ultrasonic measurement is
+available; that value is a sentinel, not a physical distance. The receiver
+logs the sentinel in the existing numeric column and labels it unavailable in
+its console output. No HC-SR04 acquisition or pin configuration is implemented.
+
 ## App Lab deployment status — 2026-11-15
 
 The user manually pasted `firmware/linux/receiver.py` into Arduino App Lab

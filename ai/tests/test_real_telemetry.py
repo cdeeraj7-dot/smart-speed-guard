@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from ai.preprocessing.real_telemetry import load_real_accelerometer_csv
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
 
 
 def test_load_real_accelerometer_csv(tmp_path: Path):
@@ -25,7 +26,7 @@ def test_load_real_accelerometer_csv(tmp_path: Path):
 	assert records[0]["gps_valid"] is False
 	assert records[0]["speed_hall"] == 0.0
 	assert records[0]["speed_gps"] == 0.0
-	assert records[0]["obstacle_distance"] == 0.0
+	assert records[0]["obstacle_distance"] == OBSTACLE_DISTANCE_UNAVAILABLE
 
 
 def test_missing_required_column(tmp_path: Path):

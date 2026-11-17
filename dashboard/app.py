@@ -100,16 +100,24 @@ if df.empty:
     st.error("Telemetry file contains no records.")
     st.stop()
 
+df["sensor_valid"] = (
+    df["sensor_valid"].astype(str).str.strip().str.lower() == "true"
+)
+
 
 # -----------------------------
 # Prepare telemetry
 # -----------------------------
+
+invalid_acceleration = ~df["sensor_valid"]
+df.loc[invalid_acceleration, ["accel_x", "accel_y", "accel_z"]] = float("nan")
 
 df["accel_magnitude"] = (
     df["accel_x"] ** 2
     + df["accel_y"] ** 2
     + df["accel_z"] ** 2
 ) ** 0.5
+df.loc[invalid_acceleration, "accel_magnitude"] = float("nan")
 
 
 df["elapsed_seconds"] = (
@@ -162,14 +170,17 @@ with col2:
     )
 
     st.metric(
-        "Sensor Validity",
+        "Accelerometer Validity",
         f"{valid_percentage:.1f}%",
     )
 
 with col3:
+    valid_acceleration = df["accel_magnitude"].dropna()
     st.metric(
         "Maximum Acceleration",
-        f"{df['accel_magnitude'].max():.2f} g",
+        f"{valid_acceleration.max():.2f} g"
+        if not valid_acceleration.empty
+        else "Unavailable",
     )
 
 
@@ -190,27 +201,37 @@ st.caption(
 
 col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.metric(
-        "Mean Acceleration",
-        f"{ai_features['accel_magnitude_mean']:.4f} g",
-    )
+if "accel_magnitude_mean" in ai_features:
+    with col1:
+        st.metric(
+            "Mean Acceleration",
+            f"{ai_features['accel_magnitude_mean']:.4f} g",
+        )
 
-with col2:
-    st.metric(
-        "Maximum Acceleration",
-        f"{ai_features['accel_magnitude_max']:.4f} g",
-    )
+    with col2:
+        st.metric(
+            "Maximum Acceleration",
+            f"{ai_features['accel_magnitude_max']:.4f} g",
+        )
 
-with col3:
-    st.metric(
-        "Acceleration Std. Dev.",
-        f"{ai_features['accel_magnitude_std']:.4f} g",
-    )
+    with col3:
+        st.metric(
+            "Acceleration Std. Dev.",
+            f"{ai_features['accel_magnitude_std']:.4f} g",
+        )
+else:
+    with col1:
+        st.metric("Mean Acceleration", "Unavailable")
+
+    with col2:
+        st.metric("Maximum Acceleration", "Unavailable")
+
+    with col3:
+        st.metric("Acceleration Std. Dev.", "Unavailable")
 
 with col4:
     st.metric(
-        "Sensor Validity",
+        "Accelerometer Validity",
         f"{ai_features['sensor_valid_percentage'] * 100:.1f}%",
     )
 

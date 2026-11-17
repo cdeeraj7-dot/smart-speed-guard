@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
+
 
 def _mean(values: list[float]) -> float:
 	return sum(values) / len(values)
@@ -34,6 +36,26 @@ def _gyroscope_magnitude(record: dict[str, Any]) -> float:
 	)
 
 
+def _available_obstacle_distances(
+	window: list[dict[str, Any]],
+) -> list[float]:
+	distances = []
+
+	for record in window:
+		distance = record["obstacle_distance"]
+
+		if distance == OBSTACLE_DISTANCE_UNAVAILABLE:
+			continue
+		if distance < 0:
+			raise ValueError(
+				"obstacle_distance must be non-negative or unavailable"
+			)
+
+		distances.append(distance)
+
+	return distances
+
+
 def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 	"""
 	Convert one validated telemetry window into an ML-ready feature vector.
@@ -53,6 +75,7 @@ def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 	acceleration_magnitudes = [
 		_acceleration_magnitude(record)
 		for record in window
+		if record["sensor_valid"]
 	]
 
 	gyroscope_magnitudes = [
@@ -60,10 +83,7 @@ def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 		for record in window
 	]
 
-	obstacle_distances = [
-		record["obstacle_distance"]
-		for record in window
-	]
+	obstacle_distances = _available_obstacle_distances(window)
 
 	deterministic_alert_count = sum(
 		1
@@ -97,17 +117,9 @@ def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 			else 0.0
 		),
 
-		"accel_magnitude_mean": _mean(acceleration_magnitudes),
-		"accel_magnitude_max": max(acceleration_magnitudes),
-		"accel_magnitude_std": _std(acceleration_magnitudes),
-
 		"gyro_magnitude_mean": _mean(gyroscope_magnitudes),
 		"gyro_magnitude_max": max(gyroscope_magnitudes),
 		"gyro_magnitude_std": _std(gyroscope_magnitudes),
-
-		"obstacle_distance_mean": _mean(obstacle_distances),
-		"obstacle_distance_min": min(obstacle_distances),
-		"obstacle_distance_std": _std(obstacle_distances),
 
 		"deterministic_alert_count": float(
 			deterministic_alert_count
@@ -122,7 +134,23 @@ def extract_features(window: list[dict[str, Any]]) -> dict[str, float]:
 		),
 	}
 
+	if acceleration_magnitudes:
+		features.update({
+			"accel_magnitude_mean": _mean(acceleration_magnitudes),
+			"accel_magnitude_max": max(acceleration_magnitudes),
+			"accel_magnitude_std": _std(acceleration_magnitudes),
+		})
+
+	if obstacle_distances:
+		features.update({
+			"obstacle_distance_mean": _mean(obstacle_distances),
+			"obstacle_distance_min": min(obstacle_distances),
+			"obstacle_distance_std": _std(obstacle_distances),
+		})
+
 	return features
+
+
 def extract_available_sensor_features(
 	window: list[dict[str, Any]],
 ) -> dict[str, float]:
@@ -140,6 +168,7 @@ def extract_available_sensor_features(
 	acceleration_magnitudes = [
 		_acceleration_magnitude(record)
 		for record in window
+		if record["sensor_valid"]
 	]
 
 	sensor_valid_count = sum(
@@ -148,17 +177,15 @@ def extract_available_sensor_features(
 		if record["sensor_valid"]
 	)
 
-	return {
-		"accel_magnitude_mean": _mean(
-			acceleration_magnitudes
-		),
-		"accel_magnitude_max": max(
-			acceleration_magnitudes
-		),
-		"accel_magnitude_std": _std(
-			acceleration_magnitudes
-		),
-		"sensor_valid_percentage": (
-			sensor_valid_count / len(window)
-		),
+	features = {
+		"sensor_valid_percentage": sensor_valid_count / len(window),
 	}
+
+	if acceleration_magnitudes:
+		features.update({
+			"accel_magnitude_mean": _mean(acceleration_magnitudes),
+			"accel_magnitude_max": max(acceleration_magnitudes),
+			"accel_magnitude_std": _std(acceleration_magnitudes),
+		})
+
+	return features

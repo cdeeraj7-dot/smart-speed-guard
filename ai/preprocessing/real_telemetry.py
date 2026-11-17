@@ -4,6 +4,8 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
+
 
 def load_real_accelerometer_csv(
 	csv_path: str | Path,
@@ -59,7 +61,7 @@ def load_real_accelerometer_csv(
 				"gyro_x": 0.0,
 				"gyro_y": 0.0,
 				"gyro_z": 0.0,
-				"obstacle_distance": 0.0,
+				"obstacle_distance": OBSTACLE_DISTANCE_UNAVAILABLE,
 				"deterministic_alert": 0,
 				"sensor_valid": sensor_valid,
 			}

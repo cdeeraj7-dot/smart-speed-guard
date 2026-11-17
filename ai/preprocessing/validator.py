@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import math
 from typing import Any
+
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
 
 
 REQUIRED_FIELDS = [
@@ -91,26 +94,26 @@ def validate_record(record: dict[str, Any]) -> tuple[bool, list[str]]:
 		if not isinstance(record[field], (int, float)):
 			errors.append(f"{field} must be numeric")
 
-	# Ultrasonic distance must be numeric and non-negative.
+	# -1.0 is a transport sentinel, not a physical distance.
 	distance = record["obstacle_distance"]
 
-	if not isinstance(distance, (int, float)):
+	if isinstance(distance, bool) or not isinstance(distance, (int, float)):
 		errors.append("obstacle_distance must be numeric")
-	elif distance < 0:
+	elif not math.isfinite(float(distance)):
+		errors.append("obstacle_distance must be finite")
+	elif (
+		distance < 0
+		and distance != OBSTACLE_DISTANCE_UNAVAILABLE
+	):
 		errors.append("obstacle_distance cannot be negative")
 
 	# Deterministic alert state must be an integer.
 	if not isinstance(record["deterministic_alert"], int):
 		errors.append("deterministic_alert must be an integer")
 
-	# Overall sensor validity must be boolean.
+	# sensor_valid reports accelerometer validity only.
 	if not isinstance(record["sensor_valid"], bool):
 		errors.append("sensor_valid must be boolean")
-
-	# A record marked invalid by the sensor layer must not be accepted
-	# as valid AI input.
-	if record["sensor_valid"] is False:
-		errors.append("sensor_valid is false")
 
 	return len(errors) == 0, errors
 

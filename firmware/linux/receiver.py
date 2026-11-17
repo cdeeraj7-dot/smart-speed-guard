@@ -4,7 +4,11 @@ from pathlib import Path
 
 from arduino.app_utils import App, Bridge
 
-from firmware.linux.bridge_contract import CSV_COLUMNS, validate_callback_payload
+from firmware.linux.bridge_contract import (
+    CSV_COLUMNS,
+    OBSTACLE_DISTANCE_UNAVAILABLE,
+    validate_callback_payload,
+)
 
 
 LOG_FILE = Path("telemetry.csv")
@@ -89,12 +93,19 @@ def receive_telemetry(
             sensor_valid,
         ])
 
+    obstacle_description = (
+        "unavailable"
+        if obstacle_distance == OBSTACLE_DISTANCE_UNAVAILABLE
+        else f"{obstacle_distance:.2f} cm"
+    )
+
     print(
         f"Telemetry logged | MCU time: {mcu_timestamp_ms} ms | "
         f"Speed: {speed_hall:.2f} | "
         f"Accel: ({accel_x:.3f}, {accel_y:.3f}, {accel_z:.3f}) g | "
+        f"Obstacle distance: {obstacle_description} | "
         f"Alert: {deterministic_alert} | "
-        f"Valid: {sensor_valid}"
+        f"Accelerometer valid: {sensor_valid}"
     )
 
 

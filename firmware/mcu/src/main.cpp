@@ -1,14 +1,17 @@
 #include <Arduino.h>
+#include <cmath>
 #include <math.h>
 
 #include "telemetry.h"
 #include "safety.h"
 #include "imu.h"
+#include "obstacle_state.h"
 #include "Arduino_RouterBridge.h"
 
 TelemetryData telemetry;
 SafetyStatus safety_status;
 IMUData imu_data;
+ObstacleValidityTracker obstacle_validity;
 
 namespace {
 
@@ -26,17 +29,23 @@ void setup() {
     initializeTelemetry(telemetry);
     Bridge.begin();
 
-    safety_status = evaluateSafety(0.0f, 0.0f, 0.0f);
-
-    bool imu_ok = initializeIMU();
+    safety_status = evaluateSafety(
+        telemetry.speed_hall,
+        telemetry.obstacle_distance,
+        0.0f,
+        false,
+        telemetry.obstacle_valid
+    );
 
     Serial.println("================================");
     Serial.println("Smart Speed Guard - MCU");
     Serial.println("STM32U585 firmware started");
 
+    bool imu_ok = initializeIMU();
+
     Serial.println(
         imu_ok ? "MPU6050 initialized" :
-                 "MPU6050 initialization FAILED"
+                 "MPU6050 initialization FAILED; see preceding I2C diagnostic"
     );
 
     Serial.println("================================");
@@ -54,10 +63,35 @@ void loop() {
     last_telemetry_ms = now;
     telemetry.timestamp = now;
 
+    const ObstacleReading obstacle = obstacle_validity.current(now);
+    telemetry.obstacle_distance = obstacle.distance_cm;
+    telemetry.obstacle_valid = obstacle.valid;
+
     bool imu_read_ok = readIMU(imu_data);
 
-    telemetry.sensor_valid =
-        imu_read_ok && imu_data.accel_valid;
+    bool acceleration_valid =
+        imu_read_ok &&
+        imu_data.accel_valid &&
+        std::isfinite(imu_data.accel_x) &&
+        std::isfinite(imu_data.accel_y) &&
+        std::isfinite(imu_data.accel_z);
+
+    float acceleration_magnitude = NAN;
+
+    if (acceleration_valid) {
+        acceleration_magnitude = sqrtf(
+            imu_data.accel_x * imu_data.accel_x +
+            imu_data.accel_y * imu_data.accel_y +
+            imu_data.accel_z * imu_data.accel_z
+        );
+        acceleration_valid = std::isfinite(acceleration_magnitude);
+    }
+
+    if (!acceleration_valid) {
+        acceleration_magnitude = NAN;
+    }
+
+    telemetry.sensor_valid = acceleration_valid;
 
     if (telemetry.sensor_valid) {
         telemetry.accel_x = imu_data.accel_x;
@@ -74,16 +108,12 @@ void loop() {
     telemetry.gyro_z = imu_data.gyro_z;
     telemetry.gyro_valid = imu_data.gyro_valid;
 
-    const float acceleration_magnitude = sqrtf(
-        telemetry.accel_x * telemetry.accel_x +
-        telemetry.accel_y * telemetry.accel_y +
-        telemetry.accel_z * telemetry.accel_z
-    );
-
     safety_status = evaluateSafety(
         telemetry.speed_hall,
         telemetry.obstacle_distance,
-        acceleration_magnitude
+        acceleration_magnitude,
+        telemetry.sensor_valid,
+        telemetry.obstacle_valid
     );
 
     telemetry.deterministic_alert =

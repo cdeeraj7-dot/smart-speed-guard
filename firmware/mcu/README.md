@@ -40,6 +40,24 @@ non-blocking alert-state machine with provisional hysteresis thresholds. These
 values are development defaults only and must be replaced by measured,
 bench-validated parameters before any field deployment or safety claim.
 
+### Sensor validity and unavailable ultrasonic data
+
+`TelemetryData::sensor_valid` describes the MPU6050 accelerometer sample only.
+It does not describe GPS, gyroscope, or ultrasonic validity.
+
+The current MCU has no HC-SR04 acquisition driver. Until one is implemented
+after wiring, pin mapping, and electrical protection are verified,
+`obstacle_distance` is `-1.0` and `obstacle_valid` is false. The sentinel is
+transport-only and must never be treated as a measured distance. Safety logic
+ignores unavailable obstacle readings for both trigger and release decisions.
+
+`ObstacleValidityTracker` keeps ultrasonic validity separate from other
+sensors. Startup, failed acquisition, invalid values, and stale samples are
+unavailable. Recovery requires two consecutive successful finite,
+non-negative samples. The freshness timeout is supplied by the future
+acquisition integration; no hardware sample period or timeout is selected in
+this repository.
+
 Watchdog configuration is **PENDING TIMING MEASUREMENTS**. No watchdog is
 enabled, and no timeout or feed condition is selected. Do not configure one
 until actual measurements are available and the proposed timeout/feed policy

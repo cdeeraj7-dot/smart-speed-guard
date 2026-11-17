@@ -29,6 +29,13 @@ The repository Linux receiver writes those values to `telemetry.csv` with the
 same column order. This contract is defined in `firmware/linux/bridge_contract.py`
 and is enforced by the Linux-side validation helper before the row is appended.
 
+`obstacle_distance` remains a finite float. A value of exactly `-1.0` means
+the ultrasonic measurement is unavailable; it is never a measured distance.
+Other negative values are invalid. `sensor_valid` reports MPU6050
+accelerometer validity only and does not invalidate other fields in the row.
+Consumers must omit unavailable distances and invalid accelerometer samples
+from their respective calculations while preserving other valid fields.
+
 The contract is a schema definition for the current implementation; it does not
 establish that each physical sensor is valid, calibrated, or available.
 Hall-speed, GPS, obstacle distance, and gyroscope acquisition remain

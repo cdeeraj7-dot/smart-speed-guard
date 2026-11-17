@@ -177,7 +177,8 @@ Possible fields include:
 - gyroscope_z
 - obstacle_distance
 - deterministic_alert_level
-- sensor_validity
+- `sensor_valid`: MPU6050 accelerometer sample validity only
+- `obstacle_distance`: non-negative distance in cm, or `-1.0` when unavailable
 
 The final dataset schema will be updated after the actual Phase 2 sensor
 interfaces and sampling rates are verified.

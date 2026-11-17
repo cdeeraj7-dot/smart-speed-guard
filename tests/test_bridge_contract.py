@@ -1,6 +1,7 @@
 from firmware.linux.bridge_contract import (
     EXPECTED_CALLBACK_ARG_COUNT,
     MCU_TELEMETRY_FIELDS,
+    OBSTACLE_DISTANCE_UNAVAILABLE,
     VALID_ALERT_IDS,
     validate_callback_payload,
 )
@@ -61,6 +62,16 @@ def test_validate_callback_payload_accepts_current_schema():
 def test_validate_callback_payload_accepts_valid_boundary_values():
     assert validate_callback_payload(make_valid_payload(mcu_timestamp_ms=0, deterministic_alert=0)) == []
     assert validate_callback_payload(make_valid_payload(deterministic_alert=max(VALID_ALERT_IDS))) == []
+
+
+def test_validate_callback_payload_accepts_unavailable_distance_sentinel():
+    assert validate_callback_payload(
+        make_valid_payload(obstacle_distance=OBSTACLE_DISTANCE_UNAVAILABLE)
+    ) == []
+
+
+def test_validate_callback_payload_rejects_other_negative_distances():
+    assert validate_callback_payload(make_valid_payload(obstacle_distance=-2.0))
 
 
 def test_validate_callback_payload_rejects_wrong_length():

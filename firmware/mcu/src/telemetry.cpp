@@ -1,5 +1,7 @@
 #include "telemetry.h"
 
+#include "obstacle_state.h"
+
 void initializeTelemetry(TelemetryData& telemetry) {
 	telemetry.timestamp = 0;
 
@@ -20,7 +22,8 @@ void initializeTelemetry(TelemetryData& telemetry) {
 	telemetry.gyro_z = 0.0f;
 	telemetry.gyro_valid = false;
 
-	telemetry.obstacle_distance = 0.0f;
+	telemetry.obstacle_distance = OBSTACLE_DISTANCE_UNAVAILABLE;
+	telemetry.obstacle_valid = false;
 
 	telemetry.deterministic_alert = 0;
 

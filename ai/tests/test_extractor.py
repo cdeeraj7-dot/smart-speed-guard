@@ -2,6 +2,7 @@ import math
 
 from ai.features import extractor
 from ai.features.extractor import extract_features
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
 
 
 def make_record(
@@ -103,6 +104,54 @@ def test_obstacle_distance_features():
 
 	assert features["obstacle_distance_mean"] == 200.0
 	assert features["obstacle_distance_min"] == 100.0
+
+
+def test_unavailable_distances_are_excluded_from_features():
+	window = [
+		make_record(0, obstacle_distance=OBSTACLE_DISTANCE_UNAVAILABLE),
+		make_record(1000, obstacle_distance=120.0),
+	]
+
+	features = extract_features(window)
+
+	assert features["obstacle_distance_mean"] == 120.0
+	assert features["obstacle_distance_min"] == 120.0
+
+
+def test_unavailable_distances_omit_distance_features():
+	features = extract_features([
+		make_record(
+			0,
+			obstacle_distance=OBSTACLE_DISTANCE_UNAVAILABLE,
+		),
+	])
+
+	assert "obstacle_distance_mean" not in features
+	assert "obstacle_distance_min" not in features
+
+
+def test_invalid_acceleration_does_not_discard_other_measurements():
+	window = [
+		make_record(
+			0,
+			speed_hall=40.0,
+			accel_x=1000.0,
+			sensor_valid=False,
+			obstacle_distance=OBSTACLE_DISTANCE_UNAVAILABLE,
+		),
+		make_record(
+			1000,
+			speed_hall=50.0,
+			accel_x=0.0,
+			obstacle_distance=100.0,
+		),
+	]
+
+	features = extract_features(window)
+
+	assert features["speed_hall_mean"] == 45.0
+	assert features["accel_magnitude_mean"] == 9.8
+	assert features["obstacle_distance_mean"] == 100.0
 
 
 def test_alert_count():
@@ -209,3 +258,16 @@ def test_available_sensor_features_do_not_fabricate_unavailable_sensors():
 	assert "speed_gps_mean" not in features
 	assert "gyro_magnitude_mean" not in features
 	assert "obstacle_distance_mean" not in features
+
+
+def test_available_sensor_features_omit_invalid_acceleration():
+	features = extractor.extract_available_sensor_features([
+		make_record(
+			0,
+			accel_x=1000.0,
+			sensor_valid=False,
+		),
+	])
+
+	assert features["sensor_valid_percentage"] == 0.0
+	assert "accel_magnitude_mean" not in features

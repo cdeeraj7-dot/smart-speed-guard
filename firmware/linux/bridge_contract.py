@@ -25,6 +25,7 @@ MCU_TELEMETRY_FIELDS = (
 CSV_COLUMNS = MCU_TELEMETRY_FIELDS
 EXPECTED_CALLBACK_ARG_COUNT = len(MCU_TELEMETRY_FIELDS)
 VALID_ALERT_IDS = {0, 1, 2, 3}
+OBSTACLE_DISTANCE_UNAVAILABLE = -1.0
 
 
 def _is_finite_number(value: object) -> bool:
@@ -88,6 +89,15 @@ def validate_callback_payload(payload: Sequence[object]) -> list[str]:
     ):
         if not isinstance(value, bool):
             errors.append(f"{name} must be boolean")
+
+    if (
+        _is_finite_number(obstacle_distance)
+        and obstacle_distance < 0
+        and obstacle_distance != OBSTACLE_DISTANCE_UNAVAILABLE
+    ):
+        errors.append(
+            "obstacle_distance must be non-negative or the unavailable sentinel"
+        )
 
     if not _is_int_field(deterministic_alert):
         errors.append("deterministic_alert must be an integer")

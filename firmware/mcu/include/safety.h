@@ -19,7 +19,16 @@ struct SafetyStatus {
 SafetyStatus evaluateSafety(
 	float speed_hall,
 	float obstacle_distance,
-	float acceleration_magnitude
+	float acceleration_magnitude,
+	bool acceleration_valid
+);
+
+SafetyStatus evaluateSafety(
+	float speed_hall,
+	float obstacle_distance,
+	float acceleration_magnitude,
+	bool acceleration_valid,
+	bool obstacle_valid
 );
 
 #endif

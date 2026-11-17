@@ -24,6 +24,7 @@ struct TelemetryData {
 	bool gyro_valid;
 
 	float obstacle_distance;
+	bool obstacle_valid;
 
 	uint8_t deterministic_alert;
 

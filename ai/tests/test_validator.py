@@ -1,4 +1,5 @@
 from ai.preprocessing.validator import validate_record
+from firmware.linux.bridge_contract import OBSTACLE_DISTANCE_UNAVAILABLE
 
 def valid_record():
 	return {
@@ -65,5 +66,35 @@ def test_invalid_sensor_status():
 
 	is_valid, errors = validate_record(record)
 
+	assert is_valid is True
+	assert errors == []
+
+
+def test_unavailable_distance_sentinel_is_valid():
+	record = valid_record()
+	record["obstacle_distance"] = OBSTACLE_DISTANCE_UNAVAILABLE
+
+	is_valid, errors = validate_record(record)
+
+	assert is_valid is True
+	assert errors == []
+
+
+def test_other_negative_distance_is_invalid():
+	record = valid_record()
+	record["obstacle_distance"] = -2.0
+
+	is_valid, errors = validate_record(record)
+
 	assert is_valid is False
-	assert "sensor_valid is false" in errors
+	assert "obstacle_distance cannot be negative" in errors
+
+
+def test_nonfinite_distance_is_invalid():
+	record = valid_record()
+	record["obstacle_distance"] = float("nan")
+
+	is_valid, errors = validate_record(record)
+
+	assert is_valid is False
+	assert "obstacle_distance must be finite" in errors

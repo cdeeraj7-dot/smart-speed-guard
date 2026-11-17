@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "obstacle_state.h"
+
 namespace {
 
 // These are provisional development defaults only. They must be replaced with
@@ -20,15 +22,23 @@ bool isFinite(float value) {
 AlertType chooseAlert(
 	float speed_hall,
 	float obstacle_distance,
+	bool obstacle_valid,
 	float acceleration_magnitude,
+	bool acceleration_valid,
 	AlertType previous_alert
 ) {
-	if (isFinite(acceleration_magnitude) &&
+	if (previous_alert == AlertType::IMPACT && !acceleration_valid) {
+		return AlertType::IMPACT;
+	}
+
+	if (acceleration_valid &&
+		isFinite(acceleration_magnitude) &&
 		acceleration_magnitude >= IMPACT_TRIGGER) {
 		return AlertType::IMPACT;
 	}
 
-	if (isFinite(obstacle_distance) &&
+	if (obstacle_valid &&
+		isFinite(obstacle_distance) &&
 		obstacle_distance <= OBSTACLE_TRIGGER) {
 		return AlertType::OBSTACLE;
 	}
@@ -39,12 +49,14 @@ AlertType chooseAlert(
 	}
 
 	if (previous_alert == AlertType::IMPACT &&
+		acceleration_valid &&
 		isFinite(acceleration_magnitude) &&
 		acceleration_magnitude <= IMPACT_RELEASE) {
 		return AlertType::NONE;
 	}
 
 	if (previous_alert == AlertType::OBSTACLE &&
+		obstacle_valid &&
 		isFinite(obstacle_distance) &&
 		obstacle_distance >= OBSTACLE_RELEASE) {
 		return AlertType::NONE;
@@ -64,26 +76,61 @@ AlertType chooseAlert(
 SafetyStatus evaluateSafety(
 	float speed_hall,
 	float obstacle_distance,
-	float acceleration_magnitude
+	float acceleration_magnitude,
+	bool acceleration_valid
+) {
+	const bool obstacle_valid =
+		isFinite(obstacle_distance) &&
+		obstacle_distance >= 0.0f &&
+		obstacle_distance != OBSTACLE_DISTANCE_UNAVAILABLE;
+
+	return evaluateSafety(
+		speed_hall,
+		obstacle_distance,
+		acceleration_magnitude,
+		acceleration_valid,
+		obstacle_valid
+	);
+}
+
+SafetyStatus evaluateSafety(
+	float speed_hall,
+	float obstacle_distance,
+	float acceleration_magnitude,
+	bool acceleration_valid,
+	bool obstacle_valid
 ) {
 	static AlertType previous_alert = AlertType::NONE;
+	static bool obstacle_alert_latched = false;
 
 	if (!isFinite(speed_hall)) {
 		speed_hall = 0.0f;
 	}
 
-	if (!isFinite(obstacle_distance)) {
-		obstacle_distance = 0.0f;
+	if (!isFinite(obstacle_distance) ||
+		obstacle_distance < 0.0f ||
+		obstacle_distance == OBSTACLE_DISTANCE_UNAVAILABLE) {
+		obstacle_valid = false;
+	}
+
+	if (obstacle_valid) {
+		if (obstacle_distance <= OBSTACLE_TRIGGER) {
+			obstacle_alert_latched = true;
+		} else if (obstacle_distance >= OBSTACLE_RELEASE) {
+			obstacle_alert_latched = false;
+		}
 	}
 
 	if (!isFinite(acceleration_magnitude)) {
-		acceleration_magnitude = 0.0f;
+		acceleration_valid = false;
 	}
 
 	AlertType next_alert = chooseAlert(
 		speed_hall,
 		obstacle_distance,
+		obstacle_valid,
 		acceleration_magnitude,
+		acceleration_valid,
 		previous_alert
 	);
 
@@ -93,13 +140,20 @@ SafetyStatus evaluateSafety(
 	}
 
 	if (next_alert == AlertType::NONE &&
+		obstacle_valid &&
 		obstacle_distance <= OBSTACLE_TRIGGER) {
 		next_alert = AlertType::OBSTACLE;
 	}
 
 	if (next_alert == AlertType::NONE &&
+		acceleration_valid &&
+		isFinite(acceleration_magnitude) &&
 		acceleration_magnitude >= IMPACT_TRIGGER) {
 		next_alert = AlertType::IMPACT;
+	}
+
+	if (next_alert == AlertType::NONE && obstacle_alert_latched) {
+		next_alert = AlertType::OBSTACLE;
 	}
 
 	previous_alert = next_alert;
